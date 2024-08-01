@@ -14,6 +14,7 @@ class _HomePageState extends State<HomePage> {
   int _attempts = 5;
   late int _secretNumber;
   late int _remainingAttempts;
+  int _correctGuesses = 0;
   String _message = '';
   final List<String> _history = [];
   final TextEditingController _controller = TextEditingController();
@@ -67,7 +68,8 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       int? guess = int.tryParse(_controller.text);
       if (guess == null || guess < 1 || guess > _maxNumber) {
-        _message = 'Por favor, introduce un número válido entre 1 y $_maxNumber';
+        _message =
+            'Por favor, introduce un número válido entre 1 y $_maxNumber';
         Vibration.vibrate(duration: 500);
         return;
       }
@@ -78,6 +80,8 @@ class _HomePageState extends State<HomePage> {
         _message = '¡Correcto! El número era $_secretNumber';
         _history.insert(0, '$_secretNumber - Correcto');
         _listKey.currentState?.insertItem(0);
+        _correctGuesses++;
+        _showSnackBar('¡Felicidades! Adivinaste el número.');
         _resetGame();
       } else if (_remainingAttempts == 0) {
         _message = 'Lo siento, has perdido. El número era $_secretNumber';
@@ -97,12 +101,28 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adivina el Número'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                'Correctos: $_correctGuesses',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Center(
@@ -118,6 +138,7 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
+            const Text('Dificultad'),
             Slider(
               value: _difficultyValue,
               min: 0,
@@ -136,34 +157,54 @@ class _HomePageState extends State<HomePage> {
                 labelText: 'Tu conjetura',
               ),
             ),
-               ElevatedButton(
-                onPressed: _checkGuess,
-                child: const Text('Adivina'),
-
-            ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              child: Text(
-                _message,
-                key: ValueKey<String>(_message),
-                style: const TextStyle(fontSize: 20),
+            const SizedBox(height: 20),
+            Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: Row(
+                  key: ValueKey<String>(_message),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _message,
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    if (_message.contains('menor'))
+                      const Icon(Icons.arrow_downward, color: Color(0xFF45BEB7)),
+                    if (_message.contains('mayor'))
+                      const Icon(Icons.arrow_upward, color: Color(0xFF085F63)),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 20),
             Expanded(
-              child: AnimatedList(
-                key: _listKey,
-                initialItemCount: _history.length,
+              child: ListView.builder(
+                itemCount: _history.length,
                 reverse: true,
-                itemBuilder: (context, index, animation) {
-                  return _buildItem(_history[index], animation);
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(
+                      _history[index],
+                      style: TextStyle(
+                        color: _history[index].contains('Correcto')
+                            ? const Color(0xFF53D397)
+                            : const Color(0xFF8F8787),
+                      ),
+                    ),
+                  );
                 },
               ),
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _checkGuess,
+        child: const Icon(Icons.check),
       ),
     );
   }
