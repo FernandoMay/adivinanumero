@@ -3,14 +3,13 @@ import 'package:vibration/vibration.dart';
 import 'dart:math';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   String _difficulty = 'Fácil';
+  double _difficultyValue = 0;
   int _maxNumber = 10;
   int _attempts = 5;
   late int _secretNumber;
@@ -19,7 +18,6 @@ class _HomePageState extends State<HomePage> {
   final List<String> _history = [];
   final TextEditingController _controller = TextEditingController();
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  bool _isButtonPressed = false;
 
   @override
   void initState() {
@@ -41,26 +39,25 @@ class _HomePageState extends State<HomePage> {
     return Random().nextInt(_maxNumber) + 1;
   }
 
-  void _updateDifficulty(String newDifficulty) {
+  void _updateDifficulty(double value) {
     setState(() {
-      _difficulty = newDifficulty;
-      switch (_difficulty) {
-        case 'Fácil':
-          _maxNumber = 10;
-          _attempts = 5;
-          break;
-        case 'Medio':
-          _maxNumber = 20;
-          _attempts = 8;
-          break;
-        case 'Avanzado':
-          _maxNumber = 100;
-          _attempts = 15;
-          break;
-        case 'Extremo':
-          _maxNumber = 1000;
-          _attempts = 25;
-          break;
+      _difficultyValue = value;
+      if (value == 0) {
+        _difficulty = 'Fácil';
+        _maxNumber = 10;
+        _attempts = 5;
+      } else if (value == 1) {
+        _difficulty = 'Medio';
+        _maxNumber = 20;
+        _attempts = 8;
+      } else if (value == 2) {
+        _difficulty = 'Avanzado';
+        _maxNumber = 100;
+        _attempts = 15;
+      } else if (value == 3) {
+        _difficulty = 'Extremo';
+        _maxNumber = 1000;
+        _attempts = 25;
       }
       _resetGame();
     });
@@ -70,9 +67,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       int? guess = int.tryParse(_controller.text);
       if (guess == null || guess < 1 || guess > _maxNumber) {
-        _message =
-            'Por favor, introduce un número válido entre 1 y $_maxNumber';
-        _isButtonPressed = true;
+        _message = 'Por favor, introduce un número válido entre 1 y $_maxNumber';
         Vibration.vibrate(duration: 500);
         return;
       }
@@ -81,25 +76,24 @@ class _HomePageState extends State<HomePage> {
 
       if (guess == _secretNumber) {
         _message = '¡Correcto! El número era $_secretNumber';
-        _history.add('$_secretNumber - Correcto');
-        _listKey.currentState?.insertItem(_history.length - 1);
+        _history.insert(0, '$_secretNumber - Correcto');
+        _listKey.currentState?.insertItem(0);
         _resetGame();
       } else if (_remainingAttempts == 0) {
         _message = 'Lo siento, has perdido. El número era $_secretNumber';
-        _history.add('$_secretNumber - Incorrecto');
-        _listKey.currentState?.insertItem(_history.length - 1);
+        _history.insert(0, '$_secretNumber - Incorrecto');
+        _listKey.currentState?.insertItem(0);
         _resetGame();
       } else if (guess > _secretNumber) {
         _message = 'Intenta con un número menor';
-        _history.add('$guess - Mayor que el número secreto');
-        _listKey.currentState?.insertItem(_history.length - 1);
+        _history.insert(0, '$guess - Mayor que el número secreto');
+        _listKey.currentState?.insertItem(0);
       } else {
         _message = 'Intenta con un número mayor';
-        _history.add('$guess - Menor que el número secreto');
-        _listKey.currentState?.insertItem(_history.length - 1);
+        _history.insert(0, '$guess - Menor que el número secreto');
+        _listKey.currentState?.insertItem(0);
       }
       _controller.clear();
-      _isButtonPressed = false;
     });
   }
 
@@ -107,24 +101,32 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Guess the Number'),
+        title: const Text('Adivina el Número'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                'Intentos: $_remainingAttempts',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
-            DropdownButton<String>(
-              value: _difficulty,
-              onChanged: (String? newValue) {
-                _updateDifficulty(newValue!);
+            Slider(
+              value: _difficultyValue,
+              min: 0,
+              max: 3,
+              divisions: 3,
+              label: _difficulty,
+              onChanged: (double value) {
+                _updateDifficulty(value);
               },
-              items: <String>['Fácil', 'Medio', 'Avanzado', 'Extremo']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
             ),
             Text('Adivina el número entre 1 y $_maxNumber'),
             TextField(
@@ -134,18 +136,10 @@ class _HomePageState extends State<HomePage> {
                 labelText: 'Tu conjetura',
               ),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: _isButtonPressed ? 200.0 : 100.0,
-              height: 50.0,
-              color: _isButtonPressed ? Colors.blue : Colors.red,
-              alignment: _isButtonPressed
-                  ? Alignment.center
-                  : AlignmentDirectional.topCenter,
-              child: ElevatedButton(
+               ElevatedButton(
                 onPressed: _checkGuess,
                 child: const Text('Adivina'),
-              ),
+
             ),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
@@ -162,6 +156,7 @@ class _HomePageState extends State<HomePage> {
               child: AnimatedList(
                 key: _listKey,
                 initialItemCount: _history.length,
+                reverse: true,
                 itemBuilder: (context, index, animation) {
                   return _buildItem(_history[index], animation);
                 },
