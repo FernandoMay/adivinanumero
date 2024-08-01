@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import 'dart:math';
 
-class MyHomePage extends StatefulWidget {
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomePageState extends State<HomePage> {
   String _difficulty = 'Fácil';
   int _maxNumber = 10;
   int _attempts = 5;
