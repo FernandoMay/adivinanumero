@@ -1,14 +1,13 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:vibration/vibration.dart';
+import 'dart:math';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
+class MyHomePage extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _MyHomePageState extends State<MyHomePage> {
   String _difficulty = 'Fácil';
   int _maxNumber = 10;
   int _attempts = 5;
@@ -16,8 +15,9 @@ class _HomePageState extends State<HomePage> {
   late int _remainingAttempts;
   String _message = '';
   final List<String> _history = [];
-
   final TextEditingController _controller = TextEditingController();
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  bool _isButtonPressed = false;
 
   @override
   void initState() {
@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   int _generateSecretNumber() {
-    return (1 + (Random().nextInt(_maxNumber)));
+    return Random().nextInt(_maxNumber) + 1;
   }
 
   void _updateDifficulty(String newDifficulty) {
@@ -68,7 +68,10 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       int? guess = int.tryParse(_controller.text);
       if (guess == null || guess < 1 || guess > _maxNumber) {
-        _message = 'Por favor, introduce un número válido entre 1 y $_maxNumber';
+        _message =
+            'Por favor, introduce un número válido entre 1 y $_maxNumber';
+        _isButtonPressed = true;
+        Vibration.vibrate(duration: 500);
         return;
       }
 
@@ -77,19 +80,24 @@ class _HomePageState extends State<HomePage> {
       if (guess == _secretNumber) {
         _message = '¡Correcto! El número era $_secretNumber';
         _history.add('$_secretNumber - Correcto');
+        _listKey.currentState?.insertItem(_history.length - 1);
         _resetGame();
       } else if (_remainingAttempts == 0) {
         _message = 'Lo siento, has perdido. El número era $_secretNumber';
         _history.add('$_secretNumber - Incorrecto');
+        _listKey.currentState?.insertItem(_history.length - 1);
         _resetGame();
       } else if (guess > _secretNumber) {
         _message = 'Intenta con un número menor';
         _history.add('$guess - Mayor que el número secreto');
+        _listKey.currentState?.insertItem(_history.length - 1);
       } else {
         _message = 'Intenta con un número mayor';
         _history.add('$guess - Menor que el número secreto');
+        _listKey.currentState?.insertItem(_history.length - 1);
       }
       _controller.clear();
+      _isButtonPressed = false;
     });
   }
 
@@ -97,7 +105,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Adivina el Número'),
+        title: const Text('Guess the Number'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -124,22 +132,54 @@ class _HomePageState extends State<HomePage> {
                 labelText: 'Tu conjetura',
               ),
             ),
-            ElevatedButton(
-              onPressed: _checkGuess,
-              child: const Text('Adivina'),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: _isButtonPressed ? 200.0 : 100.0,
+              height: 50.0,
+              color: _isButtonPressed ? Colors.blue : Colors.red,
+              alignment: _isButtonPressed
+                  ? Alignment.center
+                  : AlignmentDirectional.topCenter,
+              child: ElevatedButton(
+                onPressed: _checkGuess,
+                child: const Text('Adivina'),
+              ),
             ),
-            Text(_message),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Text(
+                _message,
+                key: ValueKey<String>(_message),
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
             Expanded(
-              child: ListView.builder(
-                itemCount: _history.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(_history[index]),
-                  );
+              child: AnimatedList(
+                key: _listKey,
+                initialItemCount: _history.length,
+                itemBuilder: (context, index, animation) {
+                  return _buildItem(_history[index], animation);
                 },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItem(String item, Animation<double> animation) {
+    return SizeTransition(
+      sizeFactor: animation,
+      child: ListTile(
+        title: Text(
+          item,
+          style: TextStyle(
+            color: item.contains('Correcto') ? Colors.green : Colors.red,
+          ),
         ),
       ),
     );
