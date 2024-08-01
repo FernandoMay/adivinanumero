@@ -192,7 +192,7 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(
                         color: _history[index].contains('Correcto')
                             ? const Color(0xFF53D397)
-                            : const Color(0xFF8F8787),
+                            : const Color(0xFF092532),
                       ),
                     ),
                   );
