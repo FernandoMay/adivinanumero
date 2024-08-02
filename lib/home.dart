@@ -3,6 +3,8 @@ import 'package:vibration/vibration.dart';
 import 'dart:math';
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -17,6 +19,8 @@ class _HomePageState extends State<HomePage> {
   int _correctGuesses = 0;
   String _message = '';
   final List<String> _history = [];
+  final List<int> _greaterThanList = [];
+  final List<int> _lessThanList = [];
   final TextEditingController _controller = TextEditingController();
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
 
@@ -31,7 +35,9 @@ class _HomePageState extends State<HomePage> {
       _secretNumber = _generateSecretNumber();
       _remainingAttempts = _attempts;
       _message = '';
-      _history.clear();
+      //_history.clear();
+      _greaterThanList.clear();
+      _lessThanList.clear();
       _controller.clear();
     });
   }
@@ -78,23 +84,26 @@ class _HomePageState extends State<HomePage> {
 
       if (guess == _secretNumber) {
         _message = '¡Correcto! El número era $_secretNumber';
-        _history.insert(0, '$_secretNumber - Correcto');
+        _history.insert(0, '$_secretNumber-Correcto');
         _listKey.currentState?.insertItem(0);
         _correctGuesses++;
         _showSnackBar('¡Felicidades! Adivinaste el número.');
         _resetGame();
       } else if (_remainingAttempts == 0) {
         _message = 'Lo siento, has perdido. El número era $_secretNumber';
-        _history.insert(0, '$_secretNumber - Incorrecto');
+        _history.insert(0, '$_secretNumber-Incorrecto');
         _listKey.currentState?.insertItem(0);
+        _showSnackBar('Lo siento, has perdido. :(');
         _resetGame();
       } else if (guess > _secretNumber) {
         _message = 'Intenta con un número menor';
-        _history.insert(0, '$guess - Mayor que el número secreto');
+        _lessThanList.insert(0, guess);
+        //_history.insert(0, '$guess - Mayor que el número secreto');
         _listKey.currentState?.insertItem(0);
       } else {
         _message = 'Intenta con un número mayor';
-        _history.insert(0, '$guess - Menor que el número secreto');
+        _greaterThanList.insert(0, guess);
+        //_history.insert(0, '$guess - Menor que el número secreto');
         _listKey.currentState?.insertItem(0);
       }
       _controller.clear();
@@ -106,6 +115,23 @@ class _HomePageState extends State<HomePage> {
       content: Text(message),
       duration: const Duration(seconds: 2),
     ));
+  }
+
+  Widget _buildList(List<int> list) {
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        return Center(
+          child: Text(
+            list[index].toString(),
+            style: const TextStyle(
+              color: Color(0xFF092532),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -153,6 +179,7 @@ class _HomePageState extends State<HomePage> {
             TextField(
               controller: _controller,
               keyboardType: TextInputType.number,
+              onSubmitted: (value) => _checkGuess,
               decoration: const InputDecoration(
                 labelText: 'Tu conjetura',
               ),
@@ -173,7 +200,8 @@ class _HomePageState extends State<HomePage> {
                       style: const TextStyle(fontSize: 20),
                     ),
                     if (_message.contains('menor'))
-                      const Icon(Icons.arrow_downward, color: Color(0xFF45BEB7)),
+                      const Icon(Icons.arrow_downward,
+                          color: Color(0xFF45BEB7)),
                     if (_message.contains('mayor'))
                       const Icon(Icons.arrow_upward, color: Color(0xFF085F63)),
                   ],
@@ -182,21 +210,69 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: ListView.builder(
-                itemCount: _history.length,
-                reverse: true,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(
-                      _history[index],
-                      style: TextStyle(
-                        color: _history[index].contains('Correcto')
-                            ? const Color(0xFF53D397)
-                            : const Color(0xFF092532),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10.0),
+                            child: Text('Mayor que'),
+                          ),
+                          Expanded(
+                            child: _buildList(_greaterThanList),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: Card(
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10.0),
+                            child: Text('Menor que'),
+                          ),
+                          Expanded(
+                            child: _buildList(_lessThanList),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Card(
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10.0),
+                            child: Text('Historial'),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: _history.length,
+                              itemBuilder: (context, index) {
+                                return Center(
+                                  child: Text(
+                                    _history[index].split('-')[0],
+                                    style: TextStyle(
+                                      color:
+                                          _history[index].contains('Correcto')
+                                              ? const Color(0xFF508D4E)
+                                              : const Color(0xFFC80036),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -205,20 +281,6 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _checkGuess,
         child: const Icon(Icons.check),
-      ),
-    );
-  }
-
-  Widget _buildItem(String item, Animation<double> animation) {
-    return SizeTransition(
-      sizeFactor: animation,
-      child: ListTile(
-        title: Text(
-          item,
-          style: TextStyle(
-            color: item.contains('Correcto') ? Colors.green : Colors.red,
-          ),
-        ),
       ),
     );
   }
